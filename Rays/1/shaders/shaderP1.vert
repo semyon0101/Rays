@@ -1,6 +1,9 @@
 #version 450
 
 layout (set = 0, binding = 0) uniform ParameterUBO {
+    vec3 position;
+    vec3 direction;
+    float fov;
     int width;
     int height;
 } ubo;

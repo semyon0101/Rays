@@ -109,8 +109,71 @@ struct SwapChainSupportDetails {
 };
 
 struct UniformBufferObject {
+	alignas(16) glm::vec3 position;
+	alignas(16) glm::vec3 direction;
+	alignas(4) float fov = 1;
 	alignas(4) int width = WIDTH;
 	alignas(4) int height = HEIGHT;
+};
+
+class Player {
+public:
+	glm::vec3 position;
+	glm::vec3 direction;
+	float fov;
+	const float speed = 5;
+	const float rotationSpeed = 0.1f;
+	const glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+	void set(glm::vec3 position, glm::vec3 direction, float fov) {
+		this->position = position;
+		this->direction = glm::normalize(direction);
+		this->fov = fov;
+	}
+
+	void keyUpdate(GLFWwindow* window, float deltaTime) {
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+			position += direction * speed * deltaTime; 
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+			position -= direction * speed * deltaTime;
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+			position -= glm::normalize(glm::cross(up, direction)) * speed * deltaTime;
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+			position += glm::normalize(glm::cross(up, direction)) * speed * deltaTime;
+		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+			position += glm::normalize(glm::cross(direction, glm::cross(up, direction))) * speed * deltaTime;
+		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+			position -= glm::normalize(glm::cross(direction, glm::cross(up, direction))) * speed * deltaTime; 
+		if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
+			std::cout << "position: ( " << position.x << ", " << position.y << ", " << position.z << " ); direction: ( "
+			<< direction.x << ", " << direction.y << ", " << direction.z << " );" << std::endl;
+	}
+
+	void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
+		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT)) {
+			glm::vec2 dMousePos = glm::vec2(-xpos, ypos) - oldMousePos;
+			rotate(dMousePos.x * rotationSpeed, dMousePos.y * rotationSpeed);
+		}
+		oldMousePos = glm::vec2(-xpos, ypos);
+	}
+private:
+	glm::vec2 oldMousePos;
+	void rotate(float x, float y) {
+		glm::mat4 rotationMat(1);
+		rotationMat = glm::rotate(rotationMat, glm::radians(-x), up);
+		rotationMat = glm::rotate(rotationMat, glm::radians(y), glm::cross(up, direction));
+		direction = glm::vec3(rotationMat * glm::vec4(direction, 1.0));
+		direction = glm::normalize(direction);
+		if (abs(direction.z) > 0.9f) {
+			direction.z = 0.9f * abs(direction.z) / direction.z;
+			float k = direction.x / direction.y;
+			direction.y = std::sqrt((1 - direction.z * direction.z) / (k * k + 1)) * abs(direction.y) / direction.y;
+			direction.x = std::sqrt(1 - direction.z * direction.z - direction.y * direction.y) * abs(direction.x) / direction.x;
+
+
+		}
+	}
+
 };
 
 class App {
@@ -118,6 +181,7 @@ public:
 	void run() {
 		initWindow();
 		initVulkan();
+		initPlayer();
 		mainLoop();
 		cleanup();
 	}
@@ -175,6 +239,8 @@ private:
 
 	int frame = 0;
 
+	static Player player;
+
 	void initWindow() {
 		glfwInit();
 
@@ -183,7 +249,13 @@ private:
 
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 		glfwSetWindowUserPointer(window, this);
+		glfwSetCursorPosCallback(window, cursorPositionCallback);
 
+	}
+
+	static void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
+	{
+		player.cursorPositionCallback(window, xpos, ypos);
 	}
 
 
@@ -1019,6 +1091,10 @@ private:
 	}
 
 
+	void initPlayer() {
+		player.set(glm::vec3(3.0, 3.0, -3.0), glm::vec3(-3.0, -3.0, 3.0), 0.4);
+	}
+
 	void mainLoop() {
 		//thread = std::thread([this] {this->drawing(); });
 		auto start = std::chrono::steady_clock::now();
@@ -1026,6 +1102,7 @@ private:
 
 		while (!glfwWindowShouldClose(window)) {
 			glfwPollEvents();
+			player.keyUpdate(window, (std::chrono::duration_cast<std::chrono::microseconds>(deltaTime) / 1000000.0f).count());
 			drawFrame();
 
 #if STOP_EVERY_FRAME == 1
@@ -1107,6 +1184,9 @@ private:
 
 	void updateBuffers() {
 		UniformBufferObject ubo{};
+		ubo.position = player.position;
+		ubo.direction = player.direction;
+		ubo.fov = player.fov;
 		ubo.width = WIDTH;
 		ubo.height = HEIGHT;
 
@@ -1217,6 +1297,7 @@ private:
 	}
 };
 
+Player App::player = Player();
 
 int main() {
 
