@@ -111,6 +111,7 @@ struct SwapChainSupportDetails {
 struct UniformBufferObject {
 	alignas(16) glm::vec3 position;
 	alignas(16) glm::vec3 direction;
+	alignas(4) float frame = 0;
 	alignas(4) float fov = 1;
 	alignas(4) int width = WIDTH;
 	alignas(4) int height = HEIGHT;
@@ -121,8 +122,8 @@ public:
 	glm::vec3 position;
 	glm::vec3 direction;
 	float fov;
-	const float speed = 5;
-	const float rotationSpeed = 0.1f;
+	const float speed = 20;
+	const float rotationSpeed = 0.3f;
 	const glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
 	void set(glm::vec3 position, glm::vec3 direction, float fov) {
@@ -164,10 +165,10 @@ private:
 		rotationMat = glm::rotate(rotationMat, glm::radians(y), glm::cross(up, direction));
 		direction = glm::vec3(rotationMat * glm::vec4(direction, 1.0));
 		direction = glm::normalize(direction);
-		if (abs(direction.z) > 0.9f) {
-			direction.z = 0.9f * abs(direction.z) / direction.z;
-			float k = direction.x / direction.y;
-			direction.y = std::sqrt((1 - direction.z * direction.z) / (k * k + 1)) * abs(direction.y) / direction.y;
+		if (abs(direction.y) > 0.97f) {
+			direction.y = 0.97f * abs(direction.y) / direction.y;
+			float k = direction.x / direction.z;
+			direction.z = std::sqrt((1 - direction.y * direction.y) / (k * k + 1)) * abs(direction.z) / direction.z;
 			direction.x = std::sqrt(1 - direction.z * direction.z - direction.y * direction.y) * abs(direction.x) / direction.x;
 
 
@@ -1092,7 +1093,7 @@ private:
 
 
 	void initPlayer() {
-		player.set(glm::vec3(3.0, 3.0, -3.0), glm::vec3(-3.0, -3.0, 3.0), 0.4);
+		player.set(glm::vec3(10.0, 10.0, -10.0), glm::vec3(-1.0, -1.0, 1.0), 0.4);
 	}
 
 	void mainLoop() {
@@ -1186,6 +1187,7 @@ private:
 		UniformBufferObject ubo{};
 		ubo.position = player.position;
 		ubo.direction = player.direction;
+		ubo.frame = frame;
 		ubo.fov = player.fov;
 		ubo.width = WIDTH;
 		ubo.height = HEIGHT;

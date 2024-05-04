@@ -3,6 +3,7 @@
 layout (set = 0, binding = 0) uniform ParameterUBO {
     vec3 position;
     vec3 direction;
+    float frame;
     float fov;
     int width;
     int height;
